@@ -204,7 +204,7 @@ public struct PrometheusMetricsFactory: PrometheusWrappedMetricsFactory {
 
     private func makeHistogram(label: String, dimensions: [(String, String)]) -> RecorderHandler {
         let label = configuration.labelSanitizer.sanitize(label)
-        let histogram = client.createHistogram(forType: Double.self, named: label)
+        let histogram = client.createHistogram(forType: Double.self, named: label, buckets: configuration.defaultRecorderBuckets)
         return MetricsHistogram(histogram: histogram, dimensions: dimensions.sanitized())
     }
 
