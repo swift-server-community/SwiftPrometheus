@@ -14,7 +14,7 @@
 
 import CoreMetrics
 
-/// A wrapper around ``PrometheusCollectorRegistry`` to implement the `swift-metrics` `MetricsFactory` protocol
+/// A wrapper around ``PrometheusCollectorRegistry`` to implement the swift-metrics `MetricsFactory` protocol
 public struct PrometheusMetricsFactory: Sendable {
     private static let _defaultRegistry = PrometheusCollectorRegistry()
 
@@ -27,21 +27,23 @@ public struct PrometheusMetricsFactory: Sendable {
     /// The underlying ``PrometheusCollectorRegistry`` that is used to generate the swift-metrics handlers
     public var registry: PrometheusCollectorRegistry
 
-    /// The default histogram buckets for a ``TimeHistogram``. If there is no explicit overwrite
-    /// via ``durationHistogramBuckets``, the buckets provided here will be used for any new
-    /// Swift Metrics `Timer` type.
-    public var defaultDurationHistogramBuckets: [Duration]
+    /// The default histogram buckets, to back a swift-metrics `Timer`.
+    ///
+    /// If there is no explicit overwrite via ``PrometheusMetricsFactory/timerHistogramBuckets``,
+    /// the buckets provided here will be used for any new swift-metrics `Timer`.
+    public var defaultTimerHistogramBuckets: [Double]
 
-    /// The histogram buckets for a ``TimeHistogram`` per Timer label
-    public var durationHistogramBuckets: [String: [Duration]]
+    /// The buckets for a ``Histogram`` per `Timer` name to back a swift-metrics `Timer`
+    public var timerHistogramBuckets: [String: [Double]]
 
-    /// The default histogram buckets for a ``ValueHistogram``. If there is no explicit overwrite
-    /// via ``valueHistogramBuckets``, the buckets provided here will be used for any new
-    /// Swift Metrics `Summary` type.
-    public var defaultValueHistogramBuckets: [Double]
+    /// The default histogram buckets, to back a swift-metrics `Recorder`, that aggregates.
+    ///
+    /// If there is no explicit overwrite via ``PrometheusMetricsFactory/recorderHistogramBuckets``,
+    /// the buckets provided here will be used for any new swift-metrics `Recorder`, that aggregates.
+    public var defaultRecorderHistogramBuckets: [Double]
 
-    /// The histogram buckets for a ``ValueHistogram`` per label
-    public var valueHistogramBuckets: [String: [Double]]
+    /// The buckets for a ``Histogram`` per `Recorder` name to back a swift-metrics `Recorder`, that aggregates.
+    public var recorderHistogramBuckets: [String: [Double]]
 
     /// A closure to modify the name and labels used in the Swift Metrics API. This allows users
     /// to overwrite the Metric names in third party packages.
@@ -50,34 +52,14 @@ public struct PrometheusMetricsFactory: Sendable {
     public init(registry: PrometheusCollectorRegistry = Self.defaultRegistry) {
         self.registry = registry
 
-        self.durationHistogramBuckets = [:]
-        self.defaultDurationHistogramBuckets = [
-            .milliseconds(5),
-            .milliseconds(10),
-            .milliseconds(25),
-            .milliseconds(50),
-            .milliseconds(100),
-            .milliseconds(250),
-            .milliseconds(500),
-            .seconds(1),
-            .milliseconds(2500),
-            .seconds(5),
-            .seconds(10),
+        self.timerHistogramBuckets = [:]
+        self.defaultTimerHistogramBuckets = [
+            0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
         ]
 
-        self.valueHistogramBuckets = [:]
-        self.defaultValueHistogramBuckets = [
-            5,
-            10,
-            25,
-            50,
-            100,
-            250,
-            500,
-            1000,
-            2500,
-            5000,
-            10000,
+        self.recorderHistogramBuckets = [:]
+        self.defaultRecorderHistogramBuckets = [
+            0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
         ]
 
         self.nameAndLabelSanitizer = { ($0, $1) }
@@ -98,8 +80,8 @@ extension PrometheusMetricsFactory: CoreMetrics.MetricsFactory {
     public func makeRecorder(label: String, dimensions: [(String, String)], aggregate: Bool) -> CoreMetrics.RecorderHandler {
         let (label, dimensions) = self.nameAndLabelSanitizer(label, dimensions)
         if aggregate {
-            let buckets = self.valueHistogramBuckets[label] ?? self.defaultValueHistogramBuckets
-            return self.registry.makeValueHistogram(name: label, labels: dimensions, buckets: buckets)
+            let buckets = self.recorderHistogramBuckets[label] ?? self.defaultRecorderHistogramBuckets
+            return self.registry.makeHistogram(name: label, labels: dimensions, buckets: buckets)
         } else {
             return self.registry.makeGauge(name: label, labels: dimensions)
         }
@@ -111,8 +93,8 @@ extension PrometheusMetricsFactory: CoreMetrics.MetricsFactory {
 
     public func makeTimer(label: String, dimensions: [(String, String)]) -> CoreMetrics.TimerHandler {
         let (label, dimensions) = self.nameAndLabelSanitizer(label, dimensions)
-        let buckets = self.durationHistogramBuckets[label] ?? self.defaultDurationHistogramBuckets
-        return self.registry.makeDurationHistogram(name: label, labels: dimensions, buckets: buckets)
+        let buckets = self.timerHistogramBuckets[label] ?? self.defaultTimerHistogramBuckets
+        return self.registry.makeHistogram(name: label, labels: dimensions, buckets: buckets)
     }
 
     public func destroyCounter(_ handler: CoreMetrics.CounterHandler) {
@@ -133,8 +115,8 @@ extension PrometheusMetricsFactory: CoreMetrics.MetricsFactory {
         switch handler {
         case let gauge as Gauge:
             self.registry.unregisterGauge(gauge)
-        case let histogram as Histogram<Double>:
-            self.registry.unregisterValueHistogram(histogram)
+        case let histogram as Histogram:
+            self.registry.unregisterHistogram(histogram)
         default:
             break
         }
@@ -148,9 +130,9 @@ extension PrometheusMetricsFactory: CoreMetrics.MetricsFactory {
     }
 
     public func destroyTimer(_ handler: CoreMetrics.TimerHandler) {
-        guard let histogram = handler as? Histogram<Duration> else {
+        guard let histogram = handler as? Histogram else {
             return
         }
-        self.registry.unregisterTimeHistogram(histogram)
+        self.registry.unregisterHistogram(histogram)
     }
 }

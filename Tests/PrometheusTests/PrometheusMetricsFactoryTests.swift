@@ -21,7 +21,7 @@ final class PrometheusMetricsFactoryTests: XCTestCase {
         let factory = PrometheusMetricsFactory(registry: registry)
 
         let timer = factory.makeTimer(label: "foo", dimensions: [("bar", "baz")])
-        XCTAssertNotNil(timer as? Histogram<Duration>)
+        XCTAssertNotNil(timer as? Histogram)
     }
 
     func testMakeRecorders() {
@@ -32,7 +32,7 @@ final class PrometheusMetricsFactoryTests: XCTestCase {
         XCTAssertNotNil(maybeGauge as? Gauge)
 
         let maybeRecorder = factory.makeRecorder(label: "bar", dimensions: [], aggregate: true)
-        XCTAssertNotNil(maybeRecorder as? Histogram<Double>)
+        XCTAssertNotNil(maybeRecorder as? Histogram)
     }
 
     func testMakeCounters() {

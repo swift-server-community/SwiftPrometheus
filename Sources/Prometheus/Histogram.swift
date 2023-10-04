@@ -14,40 +14,28 @@
 
 import CoreMetrics
 
-/// A type that can be used in a ``Histogram`` to create bucket boundaries
-public protocol Bucketable: AdditiveArithmetic, Comparable, Sendable {
-    /// A string representation that is used in the Prometheus export
-    var bucketRepresentation: String { get }
-}
-
-/// A Histogram to record timings
-public typealias DurationHistogram = Histogram<Duration>
-/// A Histogram to record floating point values
-public typealias ValueHistogram = Histogram<Double>
-
-/// A generic Histogram implementation
-public final class Histogram<Value: Bucketable>: Sendable {
+/// A Histogram implementation, that is backed by buckets in Double
+public final class Histogram: Sendable {
     let name: String
     let labels: [(String, String)]
 
-    @usableFromInline
     struct State: Sendable {
-        @usableFromInline var buckets: [(Value, Int)]
-        @usableFromInline var sum: Value
-        @usableFromInline var count: Int
+        var buckets: [(Double, Int)]
+        var sum: Double
+        var count: Int
 
         @inlinable
-        init(buckets: [Value]) {
+        init(buckets: [Double]) {
             self.sum = .zero
             self.count = 0
             self.buckets = buckets.map { ($0, 0) }
         }
     }
 
-    @usableFromInline let box: NIOLockedValueBox<State>
+    let box: NIOLockedValueBox<State>
     let prerenderedLabels: [UInt8]?
 
-    init(name: String, labels: [(String, String)], buckets: [Value]) {
+    init(name: String, labels: [(String, String)], buckets: [Double]) {
         self.name = name
         self.labels = labels
 
@@ -56,7 +44,7 @@ public final class Histogram<Value: Bucketable>: Sendable {
         self.box = .init(.init(buckets: buckets))
     }
 
-    public func record(_ value: Value) {
+    public func observe(_ value: Double) {
         self.box.withLockedValue { state in
             for i in state.buckets.startIndex..<state.buckets.endIndex {
                 if state.buckets[i].0 >= value {
@@ -67,20 +55,29 @@ public final class Histogram<Value: Bucketable>: Sendable {
             state.count += 1
         }
     }
+
+    public func observe(_ value: Duration) {
+        let value = Double(value.components.seconds) + Double(value.components.attoseconds) / 1e18
+        self.observe(value)
+    }
 }
 
 extension Histogram: _SwiftMetricsSendableProtocol {}
 
-extension Histogram: CoreMetrics.TimerHandler where Value == Duration {
+extension Histogram: CoreMetrics.TimerHandler {
     public func recordNanoseconds(_ duration: Int64) {
         let value = Duration.nanoseconds(duration)
-        self.record(value)
+        self.observe(value)
     }
 }
 
-extension Histogram: CoreMetrics.RecorderHandler where Value == Double {
+extension Histogram: CoreMetrics.RecorderHandler {
+    public func record(_ value: Double) {
+        self.observe(value)
+    }
+    
     public func record(_ value: Int64) {
-        self.record(Double(value))
+        self.observe(Double(value))
     }
 }
 
@@ -96,7 +93,7 @@ extension Histogram: PrometheusMetric {
                 buffer.append(UInt8(ascii: #","#))
             }
             buffer.append(contentsOf: #"le=""#.utf8)
-            buffer.append(contentsOf: "\(bucket.0.bucketRepresentation)".utf8)
+            buffer.append(contentsOf: "\(bucket.0)".utf8)
             buffer.append(UInt8(ascii: #"""#))
             buffer.append(contentsOf: #"} "#.utf8)
             buffer.append(contentsOf: "\(bucket.1)".utf8)
@@ -124,7 +121,7 @@ extension Histogram: PrometheusMetric {
         } else {
             buffer.append(UInt8(ascii: " "))
         }
-        buffer.append(contentsOf: "\(state.sum.bucketRepresentation)".utf8)
+        buffer.append(contentsOf: "\(state.sum)".utf8)
         buffer.append(contentsOf: #"\#n"#.utf8)
 
         // count
@@ -139,48 +136,5 @@ extension Histogram: PrometheusMetric {
         }
         buffer.append(contentsOf: "\(state.count)".utf8)
         buffer.append(contentsOf: #"\#n"#.utf8)
-    }
-}
-
-extension Duration: Bucketable {
-    public var bucketRepresentation: String {
-        let attos = String(unsafeUninitializedCapacity: 18) { buffer in
-            var num = self.components.attoseconds
-
-            var positions = 17
-            var length: Int?
-            while positions >= 0 {
-                defer {
-                    positions -= 1
-                    num = num / 10
-                }
-                let remainder = num % 10
-
-                if length != nil {
-                    buffer[positions] = UInt8(ascii: "0") + UInt8(remainder)
-                } else {
-                    if remainder == 0 {
-                        continue
-                    }
-
-                    length = positions + 1
-                    buffer[positions] = UInt8(ascii: "0") + UInt8(remainder)
-                }
-            }
-
-            if length == nil {
-                buffer[0] = UInt8(ascii: "0")
-                length = 1
-            }
-
-            return length!
-        }
-        return "\(self.components.seconds).\(attos)"
-    }
-}
-
-extension Double: Bucketable {
-    public var bucketRepresentation: String {
-        self.description
     }
 }

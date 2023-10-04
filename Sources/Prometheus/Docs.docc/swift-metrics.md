@@ -111,28 +111,19 @@ generated in a third party library.
 
 #### Default buckets
 
-Swift Metric ``Timer``s are backed by a Prometheus ``DurationHistogram`` and Swift Metric 
-``Recorder``s that aggregate are backed by a Prometheus ``ValueHistogram``. As a user, you can 
+Swift Metric ``Timer``s are backed by a Prometheus ``Histogram`` and Swift Metric 
+``Recorder``s that aggregate are also backed by a Prometheus ``Histogram``. As a user, you can 
 specify which buckets shall be used within the backing ``Histogram``s.
 
 ```swift
 var factory = PrometheusMetricsFactory()
 
-factory.defaultDurationHistogramBuckets = [
-  .milliseconds(5),
-  .milliseconds(10),
-  .milliseconds(25),
-  .milliseconds(50),
-  .milliseconds(100),
+factory.defaultTimerHistogramBuckets = [
+  0.005, 0.01, 0.025, 0.05, 0.1
 ]
 
-factory.defaultValueHistogramBuckets = [
-  5,
-  10,
-  25,
-  50,
-  100,
-  250,
+factory.defaultRecorderHistogramBuckets = [
+  5, 10, 25, 50, 100, 250,
 ]
 MetricSystem.bootstrap(factory)
 
@@ -148,28 +139,19 @@ You can also specify the buckets by metric name:
 ```swift
 var factory = PrometheusMetricsFactory()
 
-factory.defaultDurationHistogramBuckets = [
-  .milliseconds(5),
-  .milliseconds(10),
-  .milliseconds(25),
-  .milliseconds(50),
-  .milliseconds(100),
+factory.defaultTimerHistogramBuckets = [
+  0.005, 0.01, 0.025, 0.05, 0.1
 ]
 
-factory.durationHistogramBuckets["long"] = [
-  .seconds(5),
-  .seconds(10),
-  .seconds(25),
-  .seconds(50),
-  .seconds(100),
+factory.timerHistogramBuckets["long"] = [
+  5, 10, 25, 50, 100
 ] 
 ```
 
 Now a `Timer` with the label "long" will use the buckets  
-`[.seconds(5), .seconds(10), .seconds(25), .seconds(50), .seconds(100),]`, whereas any other 
-`Timer` will use the default buckets 
-`[.milliseconds(5), .milliseconds(10), .milliseconds(25), .milliseconds(50), .milliseconds(100),]`.
+`[5 sec, 10 sec, 25 sec, 50 sec, 100 sec]`, whereas any other 
+`Timer` will use the default buckets `[5 ms, 10ms, 25ms, 50ms, 100ms]`.
 
-The same functionality is also available for ``ValueHistogram`` and aggregating `Recorder`s.
+The same functionality is also available for ``Histogram`` that back aggregating `Recorder`s.
 
 [Swift Metrics]: https://github.com/apple/swift-metrics

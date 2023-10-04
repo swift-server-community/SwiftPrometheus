@@ -18,11 +18,8 @@ import Prometheus
 final class HistogramTests: XCTestCase {
     func testHistogramWithoutDimensions() {
         let client = PrometheusCollectorRegistry()
-        let histogram = client.makeDurationHistogram(name: "foo", labels: [], buckets: [
-            .milliseconds(100),
-            .milliseconds(250),
-            .milliseconds(500),
-            .seconds(1),
+        let histogram = client.makeHistogram(name: "foo", labels: [], buckets: [
+            0.1, 0.25, 0.5, 1,
         ])
 
         var buffer = [UInt8]()
@@ -92,9 +89,9 @@ final class HistogramTests: XCTestCase {
             """
         )
 
-        // Record 80ms
+        // Record 90ms
         buffer.removeAll(keepingCapacity: true)
-        histogram.recordNanoseconds(80_000_000) // 80ms
+        histogram.recordNanoseconds(90_000_000) // 90ms
         client.emit(into: &buffer)
         XCTAssertEqual(String(decoding: buffer, as: Unicode.UTF8.self), """
             # TYPE foo histogram
@@ -103,7 +100,7 @@ final class HistogramTests: XCTestCase {
             foo_bucket{le="0.5"} 2
             foo_bucket{le="1.0"} 3
             foo_bucket{le="+Inf"} 4
-            foo_sum 2.28
+            foo_sum 2.29
             foo_count 4
 
             """
@@ -112,11 +109,8 @@ final class HistogramTests: XCTestCase {
 
     func testHistogramWithOneDimension() {
         let client = PrometheusCollectorRegistry()
-        let histogram = client.makeDurationHistogram(name: "foo", labels: [("bar", "baz")], buckets: [
-            .milliseconds(100),
-            .milliseconds(250),
-            .milliseconds(500),
-            .seconds(1),
+        let histogram = client.makeHistogram(name: "foo", labels: [("bar", "baz")], buckets: [
+            0.1, 0.25, 0.5, 1,
         ])
 
         var buffer = [UInt8]()
@@ -185,9 +179,9 @@ final class HistogramTests: XCTestCase {
             """
         )
 
-        // Record 80ms
+        // Record 90ms
         buffer.removeAll(keepingCapacity: true)
-        histogram.recordNanoseconds(80_000_000) // 80ms
+        histogram.recordNanoseconds(90_000_000) // 90ms
         client.emit(into: &buffer)
         XCTAssertEqual(String(decoding: buffer, as: Unicode.UTF8.self), """
             # TYPE foo histogram
@@ -196,7 +190,7 @@ final class HistogramTests: XCTestCase {
             foo_bucket{bar="baz",le="0.5"} 2
             foo_bucket{bar="baz",le="1.0"} 3
             foo_bucket{bar="baz",le="+Inf"} 4
-            foo_sum{bar="baz"} 2.28
+            foo_sum{bar="baz"} 2.29
             foo_count{bar="baz"} 4
 
             """
@@ -205,11 +199,8 @@ final class HistogramTests: XCTestCase {
 
     func testHistogramWithTwoDimension() {
         let client = PrometheusCollectorRegistry()
-        let histogram = client.makeDurationHistogram(name: "foo", labels: [("bar", "baz"), ("abc", "xyz")], buckets: [
-            .milliseconds(100),
-            .milliseconds(250),
-            .milliseconds(500),
-            .seconds(1),
+        let histogram = client.makeHistogram(name: "foo", labels: [("bar", "baz"), ("abc", "xyz")], buckets: [
+            0.1, 0.25, 0.5, 1,
         ])
 
         var buffer = [UInt8]()
@@ -278,9 +269,9 @@ final class HistogramTests: XCTestCase {
             """
         )
 
-        // Record 80ms
+        // Record 90ms
         buffer.removeAll(keepingCapacity: true)
-        histogram.recordNanoseconds(80_000_000) // 80ms
+        histogram.recordNanoseconds(90_000_000) // 90ms
         client.emit(into: &buffer)
         XCTAssertEqual(String(decoding: buffer, as: Unicode.UTF8.self), """
             # TYPE foo histogram
@@ -289,7 +280,7 @@ final class HistogramTests: XCTestCase {
             foo_bucket{bar="baz",abc="xyz",le="0.5"} 2
             foo_bucket{bar="baz",abc="xyz",le="1.0"} 3
             foo_bucket{bar="baz",abc="xyz",le="+Inf"} 4
-            foo_sum{bar="baz",abc="xyz"} 2.28
+            foo_sum{bar="baz",abc="xyz"} 2.29
             foo_count{bar="baz",abc="xyz"} 4
 
             """
