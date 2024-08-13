@@ -3,24 +3,25 @@ version: "3"
 services:
 
   runtime-setup:
-    image: prometheus:22.04-main
+    image: prometheus:22.04-5.10
     build:
       args:
-        base_image: "swiftlang/swift:nightly-main-jammy"
+        base_image: "swiftlang/swift:nightly-5.10-jammy"
 
   documentation-check:
-    image: prometheus:22.04-main
+    image: prometheus:22.04-5.10
 
   test:
-    image: prometheus:22.04-main
+    image: prometheus:22.04-5.10
     environment:
+      - SWIFT_VERSION=main
       - IMPORT_CHECK_ARG=--explicit-target-dependency-import-check error
       #- SANITIZER_ARG=--sanitize=thread
 
   update-benchmark-baseline:
-    image: prometheus:22.04-main
+    image: prometheus:22.04-5.10
     environment:
-      - SWIFT_VERSION=main
+      - SWIFT_VERSION=5.10
 
   shell:
-    image: prometheus:22.04-main
+    image: prometheus:22.04-5.10

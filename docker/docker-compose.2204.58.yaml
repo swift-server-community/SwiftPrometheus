@@ -18,5 +18,10 @@ services:
       - IMPORT_CHECK_ARG=--explicit-target-dependency-import-check error
       #- SANITIZER_ARG=--sanitize=thread
 
+  update-benchmark-baseline:
+    image: prometheus:22.04-5.8
+    environment:
+      - SWIFT_VERSION=5.8
+
   shell:
     image: prometheus:22.04-5.8

@@ -16,6 +16,9 @@ ENV LANGUAGE en_US.UTF-8
 RUN apt-get update && apt-get install -y wget
 RUN apt-get update && apt-get install -y lsof dnsutils netcat-openbsd net-tools libz-dev curl jq # used by integration tests
 
+# install jemalloc for running allocation benchmarks
+RUN apt-get update & apt-get install -y libjemalloc-dev
+
 # ruby and jazzy for docs generation
 RUN apt-get update && apt-get install -y ruby ruby-dev libsqlite3-dev build-essential
 # jazzy no longer works on xenial as ruby is too old.

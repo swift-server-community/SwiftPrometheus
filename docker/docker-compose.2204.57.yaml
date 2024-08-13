@@ -17,5 +17,10 @@ services:
     environment: []
       #- SANITIZER_ARG=--sanitize=thread
 
+  update-benchmark-baseline:
+    image: prometheus:22.04-5.7
+    environment:
+      - SWIFT_VERSION=5.7
+
   shell:
     image: prometheus:22.04-5.7

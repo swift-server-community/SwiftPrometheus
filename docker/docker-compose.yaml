@@ -16,8 +16,8 @@ services:
     depends_on: [runtime-setup]
     volumes:
       - ~/.ssh:/root/.ssh
-      - ..:/code:z
-    working_dir: /code
+      - ..:/swift-prometheus:z
+    working_dir: /swift-prometheus
     cap_drop:
       - CAP_NET_RAW
       - CAP_NET_BIND_SERVICE
@@ -33,7 +33,11 @@ services:
   test:
     <<: *common
     depends_on: [runtime-setup]
-    command: /bin/bash -xcl "swift test -Xswiftc -warnings-as-errors --enable-test-discovery $${SANITIZER_ARG-} $${IMPORT_CHECK_ARG-}"
+    command: /bin/bash -xcl "swift test -Xswiftc -warnings-as-errors --enable-test-discovery $${SANITIZER_ARG-} $${IMPORT_CHECK_ARG-} && cd Benchmarks && swift package benchmark baseline check --check-absolute-path Thresholds/$${SWIFT_VERSION-}/"
+
+  update-benchmark-baseline:
+    <<: *common
+    command: /bin/bash -xcl "cd Benchmarks && swift package --disable-sandbox --scratch-path .build/$${SWIFT_VERSION-}/ --allow-writing-to-package-directory benchmark --format metricP90AbsoluteThresholds --path Thresholds/$${SWIFT_VERSION-}/"
 
   # util
 
