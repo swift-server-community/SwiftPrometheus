@@ -60,7 +60,7 @@ text representation:
 ```swift
 var buffer = [UInt8]()
 buffer.reserveCapacity(1024) // potentially smart moves to reduce the number of reallocations
-registry.emit(into: buffer)
+registry.emit(into: &buffer)
 
 print(String(decoding: buffer, as: Unicode.UTF8.self))
 ```
